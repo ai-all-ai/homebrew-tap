@@ -9,6 +9,7 @@ ruby -c "$formula"
 version="$(ruby "$root/scripts/formula-version.rb" "$formula")"
 
 brew tap ai-all-ai/homebrew-tap
+brew trust --formula ai-all-ai/tap/aiall
 tap_formula="$(brew --repository)/Library/Taps/ai-all-ai/homebrew-tap/Formula/aiall.rb"
 cp "$formula" "$tap_formula"
 formula_ref="ai-all-ai/homebrew-tap/aiall"
