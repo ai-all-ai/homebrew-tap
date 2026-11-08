@@ -1,0 +1,52 @@
+name: Update Homebrew formula
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-aiall-formula
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test version decision
+        run: node --test
+
+      - name: Check npm and update formula if a newer stable version is published
+        id: update
+        run: node scripts/update-formula.mjs
+
+      - name: Audit and install updated formula
+        if: steps.update.outputs.changed == 'true'
+        run: bash scripts/test-formula.sh
+
+      - name: Open or update the version-specific pull request
+        if: steps.update.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: automation/aiall-v${{ steps.update.outputs.version }}
+          delete-branch: true
+          commit-message: Update aiall to v${{ steps.update.outputs.version }}
+          title: "chore: update aiall to v${{ steps.update.outputs.version }}"
+          body: |
+            Update `Formula/aiall.rb` to the stable npm release `${{ steps.update.outputs.version }}`.
+
+            The updater downloaded the registry tarball, checked its SHA-512 registry integrity and computed its SHA-256. Ruby syntax, `brew audit`, installation and `brew test` passed before this PR was opened.

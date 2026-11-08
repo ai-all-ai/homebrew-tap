@@ -1,0 +1,25 @@
+name: Test Homebrew formula
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test updater version decisions
+        run: node --test
+
+      - name: Audit, install, and test the formula
+        run: bash scripts/test-formula.sh
