@@ -1,4 +1,3 @@
-
 class Aiall < Formula
   desc "Unified project instructions for AI coding agents"
   homepage "https://github.com/ai-all-ai/aiall"
