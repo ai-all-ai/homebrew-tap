@@ -34,6 +34,7 @@ If a scheduled run reports that npm metadata or the tarball is not yet available
 
 ```bash
 node --test
+npx --yes prettier@3.6.2 --check "**/*.{js,mjs,cjs,json,yml,yaml}"
 ruby -c Formula/aiall.rb
 bash scripts/test-formula.sh
 ```
