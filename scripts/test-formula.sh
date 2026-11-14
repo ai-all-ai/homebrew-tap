@@ -8,11 +8,11 @@ formula="$(cd "$(dirname "$formula")" && pwd)/$(basename "$formula")"
 ruby -c "$formula"
 version="$(ruby "$root/scripts/formula-version.rb" "$formula")"
 
-brew tap ai-all-ai/homebrew-tap
+brew tap ai-all-ai/tap
 brew trust --formula ai-all-ai/tap/aiall
 tap_formula="$(brew --repository)/Library/Taps/ai-all-ai/homebrew-tap/Formula/aiall.rb"
 cp "$formula" "$tap_formula"
-formula_ref="ai-all-ai/homebrew-tap/aiall"
+formula_ref="ai-all-ai/tap/aiall"
 
 brew audit --strict --online "$formula_ref"
 brew install --build-from-source "$formula_ref"
