@@ -45,7 +45,7 @@ jobs:
           branch: automation/aiall-v${{ steps.update.outputs.version }}
           delete-branch: true
           commit-message: Update aiall to v${{ steps.update.outputs.version }}
-          title: "chore: update aiall to v${{ steps.update.outputs.version }}"
+          title: 'chore: update aiall to v${{ steps.update.outputs.version }}'
           body: |
             Update `Formula/aiall.rb` to the stable npm release `${{ steps.update.outputs.version }}`.
 

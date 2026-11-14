@@ -18,6 +18,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Check code formatting
+        run: npx --yes prettier@3.6.2 --check "**/*.{js,mjs,cjs,json,yml,yaml}"
+
       - name: Test updater version decisions
         run: node --test
 
