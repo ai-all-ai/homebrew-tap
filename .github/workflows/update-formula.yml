@@ -38,15 +38,13 @@ jobs:
         with:
           node-version: 22
 
-      - name: Skip if formula filter is set and does not match
-        if: inputs.formula != '' && inputs.formula != matrix.formula
-        run: echo "Skipping ${{ matrix.formula }} (filter=${{ inputs.formula }})" && exit 0
-
       - name: Test version decision
+        if: inputs.formula == '' || inputs.formula == matrix.formula
         run: node --test
 
       - name: Check npm and update formula if a newer stable version is published
         id: update
+        if: inputs.formula == '' || inputs.formula == matrix.formula
         run: node scripts/update-formula.mjs ${{ matrix.formula }}
 
       - name: Audit and install updated formula
