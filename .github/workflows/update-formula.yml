@@ -4,19 +4,31 @@ on:
   schedule:
     - cron: '0 */6 * * *'
   workflow_dispatch:
+    inputs:
+      formula:
+        description: 'Formula to update (aiall, ds7, or leave empty for all)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
   pull-requests: write
 
 concurrency:
-  group: update-aiall-formula
+  group: update-homebrew-formulas
   cancel-in-progress: false
 
 jobs:
   update:
     if: github.ref == 'refs/heads/main'
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        formula:
+          - aiall
+          - ds7
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,27 +38,31 @@ jobs:
         with:
           node-version: 22
 
+      - name: Skip if formula filter is set and does not match
+        if: inputs.formula != '' && inputs.formula != matrix.formula
+        run: echo "Skipping ${{ matrix.formula }} (filter=${{ inputs.formula }})" && exit 0
+
       - name: Test version decision
         run: node --test
 
       - name: Check npm and update formula if a newer stable version is published
         id: update
-        run: node scripts/update-formula.mjs
+        run: node scripts/update-formula.mjs ${{ matrix.formula }}
 
       - name: Audit and install updated formula
         if: steps.update.outputs.changed == 'true'
-        run: bash scripts/test-formula.sh
+        run: bash scripts/test-formula.sh Formula/${{ matrix.formula }}.rb
 
       - name: Open or update the version-specific pull request
         if: steps.update.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          branch: automation/aiall-v${{ steps.update.outputs.version }}
+          branch: automation/${{ matrix.formula }}-v${{ steps.update.outputs.version }}
           delete-branch: true
-          commit-message: Update aiall to v${{ steps.update.outputs.version }}
-          title: 'chore: update aiall to v${{ steps.update.outputs.version }}'
+          commit-message: Update ${{ matrix.formula }} to v${{ steps.update.outputs.version }}
+          title: 'chore: update ${{ matrix.formula }} to v${{ steps.update.outputs.version }}'
           body: |
-            Update `Formula/aiall.rb` to the stable npm release `${{ steps.update.outputs.version }}`.
+            Update `Formula/${{ matrix.formula }}.rb` to the stable npm release `${{ steps.update.outputs.version }}`.
 
             The updater downloaded the registry tarball, checked its SHA-512 registry integrity and computed its SHA-256. Ruby syntax, `brew audit`, installation and `brew test` passed before this PR was opened.
