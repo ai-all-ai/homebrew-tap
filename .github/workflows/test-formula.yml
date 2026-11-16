@@ -11,6 +11,13 @@ permissions:
 jobs:
   test:
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        formula:
+          - aiall
+          - ds7
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,10 +26,12 @@ jobs:
           node-version: 22
 
       - name: Check code formatting
+        if: matrix.formula == 'aiall'
         run: npx --yes prettier@3.6.2 --check "**/*.{js,mjs,cjs,json,yml,yaml}"
 
       - name: Test updater version decisions
+        if: matrix.formula == 'aiall'
         run: node --test
 
       - name: Audit, install, and test the formula
-        run: bash scripts/test-formula.sh
+        run: bash scripts/test-formula.sh Formula/${{ matrix.formula }}.rb
