@@ -43,13 +43,18 @@ export function decideVersion(currentVersion, publishedVersion) {
 
 function readFormulaVersion(contents, binName = 'aiall') {
   const urlMatches = [...contents.matchAll(/^  url "([^"]+)"$/gm)];
-  const testPattern = new RegExp(`^    assert_match "([^"]+)", shell_output\\("#{bin}\\/${binName} --version"\\)$`, 'gm');
+  const testPattern = new RegExp(
+    `^    assert_match "([^"]+)", shell_output\\("#{bin}\\/${binName} --version"\\)$`,
+    'gm',
+  );
   const testMatches = [...contents.matchAll(testPattern)];
   if (urlMatches.length !== 1 || testMatches.length !== 1) {
     throw Error(`Formula must contain exactly one URL and one ${binName} --version assertion`);
   }
   const url = new URL(urlMatches[0][1]);
-  const urlPattern = new RegExp(`^\\/@ai\\.all\\/${binName}\\/-\\/(${binName}-)?(\\d+\\.\\d+\\.\\d+)\\.tgz$`);
+  const urlPattern = new RegExp(
+    `^\\/@ai\\.all\\/${binName}\\/-\\/(${binName}-)?(\\d+\\.\\d+\\.\\d+)\\.tgz$`,
+  );
   const match = urlPattern.exec(url.pathname);
   if (
     url.protocol !== 'https:' ||
@@ -174,7 +179,10 @@ export async function updateFormula(target = 'aiall') {
   const sha256 = createHash('sha256').update(bytes).digest('hex');
   let updated = replaceOne(original, /^  url "[^"]+"$/gm, `  url "${tarballUrl}"`, 'formula URL');
   updated = replaceOne(updated, /^  sha256 "[0-9a-f]{64}"$/gm, `  sha256 "${sha256}"`, 'SHA-256');
-  const testPattern = new RegExp(`^    assert_match "[^"]+", shell_output\\("#{bin}\\/${conf.binName} --version"\\)$`, 'gm');
+  const testPattern = new RegExp(
+    `^    assert_match "[^"]+", shell_output\\("#{bin}\\/${conf.binName} --version"\\)$`,
+    'gm',
+  );
   updated = replaceOne(
     updated,
     testPattern,
