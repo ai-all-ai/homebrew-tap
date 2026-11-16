@@ -16,6 +16,9 @@ tap_formula="$(brew --repository)/Library/Taps/ai-all-ai/homebrew-tap/Formula/${
 cp "$formula_path" "$tap_formula"
 formula_ref="ai-all-ai/tap/${formula_name}"
 
+# Trust only the formula being tested
+brew trust --formula "$formula_ref"
+
 brew audit --strict --online "$formula_ref"
 brew install --build-from-source "$formula_ref"
 brew test "$formula_ref"
