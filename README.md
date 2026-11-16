@@ -1,22 +1,23 @@
 # homebrew-tap
 
-Official Homebrew tap for AI-ALL CLI.
+Official Homebrew tap for AI-ALL and DS7 CLI tools.
 
 ## Install and upgrade
 
 ```bash
 brew tap ai-all-ai/tap
 brew install aiall
+brew install ds7
 ```
 
 To upgrade an existing installation after a formula update is merged:
 
 ```bash
 brew update
-brew upgrade aiall
+brew upgrade aiall ds7
 ```
 
-The formula installs the published `@ai.all/aiall` npm package and requires Node.js.
+The formulas install the published `@ai.all/aiall` and `@ai.all/ds7` npm packages and require Node.js.
 
 ## Formula updates
 

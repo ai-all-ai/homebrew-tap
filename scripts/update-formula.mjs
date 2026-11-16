@@ -5,9 +5,21 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const formulaPath = path.join(root, 'Formula', 'aiall.rb');
-const packageName = '@ai.all/aiall';
-const registryUrl = 'https://registry.npmjs.org/@ai.all/aiall/latest';
+
+const FORMULAS = {
+  aiall: {
+    packageName: '@ai.all/aiall',
+    binName: 'aiall',
+    formulaPath: path.join(root, 'Formula', 'aiall.rb'),
+    registryUrl: 'https://registry.npmjs.org/@ai.all/aiall/latest',
+  },
+  ds7: {
+    packageName: '@ai.all/ds7',
+    binName: 'ds7',
+    formulaPath: path.join(root, 'Formula', 'ds7.rb'),
+    registryUrl: 'https://registry.npmjs.org/@ai.all/ds7/latest',
+  },
+};
 
 function stableVersionParts(version) {
   if (typeof version !== 'string') throw Error('npm registry response is missing a version string');
@@ -29,18 +41,16 @@ export function decideVersion(currentVersion, publishedVersion) {
   return { status: 'unchanged' };
 }
 
-function readFormulaVersion(contents) {
+function readFormulaVersion(contents, binName = 'aiall') {
   const urlMatches = [...contents.matchAll(/^  url "([^"]+)"$/gm)];
-  const testMatches = [
-    ...contents.matchAll(
-      /^    assert_match "([^"]+)", shell_output\("#{bin}\/aiall --version"\)$/gm,
-    ),
-  ];
+  const testPattern = new RegExp(`^    assert_match "([^"]+)", shell_output\\("#{bin}\\/${binName} --version"\\)$`, 'gm');
+  const testMatches = [...contents.matchAll(testPattern)];
   if (urlMatches.length !== 1 || testMatches.length !== 1) {
-    throw Error('Formula must contain exactly one URL and one aiall --version assertion');
+    throw Error(`Formula must contain exactly one URL and one ${binName} --version assertion`);
   }
   const url = new URL(urlMatches[0][1]);
-  const match = /^\/@ai\.all\/aiall\/-\/aiall-(\d+\.\d+\.\d+)\.tgz$/.exec(url.pathname);
+  const urlPattern = new RegExp(`^\\/@ai\\.all\\/${binName}\\/-\\/(${binName}-)?(\\d+\\.\\d+\\.\\d+)\\.tgz$`);
+  const match = urlPattern.exec(url.pathname);
   if (
     url.protocol !== 'https:' ||
     url.hostname !== 'registry.npmjs.org' ||
@@ -49,11 +59,12 @@ function readFormulaVersion(contents) {
     url.hash ||
     !match
   ) {
-    throw Error('Current formula URL is not an official AI-ALL npm tarball URL');
+    throw Error(`Current formula URL is not an official ${binName} npm tarball URL`);
   }
-  if (match[1] !== testMatches[0][1])
+  const versionInUrl = match[2];
+  if (versionInUrl !== testMatches[0][1])
     throw Error('Formula URL version and test version do not match');
-  return match[1];
+  return versionInUrl;
 }
 
 function tarEntry(buffer, target) {
@@ -81,21 +92,21 @@ function tarEntry(buffer, target) {
   throw Error('npm tarball does not contain package/package.json');
 }
 
-async function getLatestPackage() {
-  const response = await fetch(registryUrl, { headers: { accept: 'application/json' } });
+async function getLatestPackage(conf) {
+  const response = await fetch(conf.registryUrl, { headers: { accept: 'application/json' } });
   if (!response.ok)
     throw Error(
-      `npm registry lookup failed (${response.status} ${response.statusText}) at ${registryUrl}`,
+      `npm registry lookup failed (${response.status} ${response.statusText}) at ${conf.registryUrl}`,
     );
   if (new URL(response.url).origin !== 'https://registry.npmjs.org')
     throw Error('npm registry metadata redirected outside registry.npmjs.org');
   const metadata = await response.json();
-  if (metadata.name !== packageName)
+  if (metadata.name !== conf.packageName)
     throw Error(`Unexpected package name from npm registry: ${metadata.name}`);
   stableVersionParts(metadata.version);
   if (!metadata.dist || typeof metadata.dist.tarball !== 'string')
     throw Error('npm registry response is missing dist.tarball');
-  const expectedUrl = `https://registry.npmjs.org/@ai.all/aiall/-/aiall-${metadata.version}.tgz`;
+  const expectedUrl = `https://registry.npmjs.org/@ai.all/${conf.binName}/-/${conf.binName}-${metadata.version}.tgz`;
   const tarballUrl = new URL(metadata.dist.tarball);
   if (tarballUrl.href !== expectedUrl)
     throw Error(`Refusing unexpected npm tarball URL: ${metadata.dist.tarball}`);
@@ -118,7 +129,7 @@ function verifyIntegrity(bytes, integrity) {
 function replaceOne(contents, pattern, replacement, description) {
   const matches = contents.match(pattern) || [];
   if (matches.length !== 1)
-    throw Error(`Expected exactly one ${description} in Formula/aiall.rb, found ${matches.length}`);
+    throw Error(`Expected exactly one ${description}, found ${matches.length}`);
   return contents.replace(pattern, replacement);
 }
 
@@ -133,10 +144,11 @@ function writeOutput({ changed, version, status, sha256 = '' }) {
   console.log(`Homebrew formula update status: ${status}; npm version: ${version}`);
 }
 
-export async function updateFormula() {
-  const original = fs.readFileSync(formulaPath, 'utf8');
-  const currentVersion = readFormulaVersion(original);
-  const { metadata, tarballUrl } = await getLatestPackage();
+export async function updateFormula(target = 'aiall') {
+  const conf = FORMULAS[target] || FORMULAS.aiall;
+  const original = fs.readFileSync(conf.formulaPath, 'utf8');
+  const currentVersion = readFormulaVersion(original, conf.binName);
+  const { metadata, tarballUrl } = await getLatestPackage(conf);
   const decision = decideVersion(currentVersion, metadata.version);
   if (decision.status !== 'update') {
     writeOutput({ changed: false, version: metadata.version, status: decision.status });
@@ -154,7 +166,7 @@ export async function updateFormula() {
   if (bytes.length === 0) throw Error('Downloaded npm tarball is empty');
   verifyIntegrity(bytes, metadata.dist.integrity);
   const archivePackage = tarEntry(bytes, 'package/package.json');
-  if (archivePackage.name !== packageName || archivePackage.version !== metadata.version) {
+  if (archivePackage.name !== conf.packageName || archivePackage.version !== metadata.version) {
     throw Error(
       `Tarball package identity mismatch: ${archivePackage.name}@${archivePackage.version}`,
     );
@@ -162,13 +174,14 @@ export async function updateFormula() {
   const sha256 = createHash('sha256').update(bytes).digest('hex');
   let updated = replaceOne(original, /^  url "[^"]+"$/gm, `  url "${tarballUrl}"`, 'formula URL');
   updated = replaceOne(updated, /^  sha256 "[0-9a-f]{64}"$/gm, `  sha256 "${sha256}"`, 'SHA-256');
+  const testPattern = new RegExp(`^    assert_match "[^"]+", shell_output\\("#{bin}\\/${conf.binName} --version"\\)$`, 'gm');
   updated = replaceOne(
     updated,
-    /^    assert_match "[^"]+", shell_output\("#{bin}\/aiall --version"\)$/gm,
-    `    assert_match "${metadata.version}", shell_output("#{bin}/aiall --version")`,
+    testPattern,
+    `    assert_match "${metadata.version}", shell_output("#{bin}/${conf.binName} --version")`,
     'version assertion',
   );
-  fs.writeFileSync(formulaPath, updated);
+  fs.writeFileSync(conf.formulaPath, updated);
   writeOutput({ changed: true, version: metadata.version, status: 'updated', sha256 });
   return {
     changed: true,
@@ -181,7 +194,8 @@ export async function updateFormula() {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  updateFormula().catch((error) => {
+  const target = process.argv[2] || 'aiall';
+  updateFormula(target).catch((error) => {
     console.error(`Homebrew formula update failed: ${error.message}`);
     process.exitCode = 1;
   });
