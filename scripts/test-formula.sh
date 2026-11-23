@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export HOMEBREW_NO_AUTO_UPDATE=1
+export HOMEBREW_NO_INSTALL_UPGRADE=1
+export NONINTERACTIVE=1
+
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.."; pwd)"
 
 # Accept optional formula path argument; derive formula name from basename
