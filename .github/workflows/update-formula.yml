@@ -3,6 +3,9 @@ name: Update Homebrew formula
 on:
   schedule:
     - cron: '0 */6 * * *'
+  # sent by the release workflow of a package right after it is published, so the formula follows within minutes
+  repository_dispatch:
+    types: [formula-update]
   workflow_dispatch:
     inputs:
       formula:
@@ -30,14 +33,14 @@ jobs:
           - ds7
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: main
 
       # Rewrites the workspace, so it must precede any file changes.
       - uses: Homebrew/actions/setup-homebrew@75064b260aea50a4b3dd1352975747d5576aaf05 # main
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
 
