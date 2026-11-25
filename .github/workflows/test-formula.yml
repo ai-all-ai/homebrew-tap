@@ -1,0 +1,40 @@
+name: Test Homebrew formula
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        formula:
+          - aiall
+          - ds7
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Rewrites the workspace, so it must precede any file changes.
+      - uses: Homebrew/actions/setup-homebrew@75064b260aea50a4b3dd1352975747d5576aaf05 # main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check code formatting
+        if: matrix.formula == 'aiall'
+        run: npx --yes prettier@3.6.2 --check "**/*.{js,mjs,cjs,json,yml,yaml}"
+
+      - name: Test updater version decisions
+        if: matrix.formula == 'aiall'
+        run: node --test
+
+      - name: Audit, install, and test the formula
+        run: bash scripts/test-formula.sh Formula/${{ matrix.formula }}.rb
